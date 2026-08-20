@@ -1,0 +1,104 @@
+/**
+ * Tier 1 — Keel brand tokens.
+ *
+ * The :root block below is copied VERBATIM from the imported design source
+ * (Keel.dc.html). Do not "tidy" these values; they are the brand.
+ *
+ * The @theme inline block underneath is what actually generates Tailwind
+ * utilities — :root declarations alone generate nothing. `inline` is
+ * load-bearing: it makes utilities emit `var(--t-fg)` rather than a resolved
+ * hex, which is what lets [data-colorway] remap a template at runtime.
+ */
+
+:root {
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-ui: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --canvas: #F1EDE4; --surface-1: #FCFAF5; --surface-2: #ECE7DB; --surface-3: #E0DACB; --overlay: #FFFFFF;
+  --scrim: rgba(38,33,24,0.34);
+  --border-faint: rgba(40,33,20,0.06); --border: rgba(40,33,20,0.13); --border-strong: rgba(40,33,20,0.24);
+  --focus-ring: rgba(29,92,102,0.55);
+  --fg-1: #232A2C; --fg-2: #5C605E; --fg-3: #918C80;
+  --action: #1C5A64; --action-hover: #18505A; --action-press: #143F47; --action-fg: #FCFAF5;
+  --action-weak: rgba(28,90,100,0.10); --action-weak-bd: rgba(28,90,100,0.26);
+  --brand: #2F8C57; --brand-weak: rgba(47,140,87,0.13); --brand-weak-bd: rgba(47,140,87,0.28);
+  --success: var(--brand); --success-weak: var(--brand-weak);
+  --info: #2C6FB0; --info-weak: rgba(44,111,176,0.12); --info-weak-bd: rgba(44,111,176,0.28);
+  --warn: #B0741F; --warn-weak: rgba(176,116,31,0.14); --warn-weak-bd: rgba(176,116,31,0.30);
+  --danger: #BB463B; --danger-hover: #A93B31; --danger-weak: rgba(187,70,59,0.12); --danger-weak-bd: rgba(187,70,59,0.30);
+  --shadow-sm: 0 1px 2px rgba(38,33,24,0.06); --shadow-md: 0 6px 22px -10px rgba(38,33,24,0.20); --shadow-lg: 0 28px 64px -22px rgba(38,33,24,0.34);
+  --ease: cubic-bezier(0.22,0.61,0.36,1); --ease-out: cubic-bezier(0.16,1,0.3,1);
+}
+
+@theme inline {
+  /* Surfaces */
+  --color-canvas: var(--canvas);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-overlay: var(--overlay);
+  --color-scrim: var(--scrim);
+
+  /* Foreground */
+  --color-fg-1: var(--fg-1);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+
+  /* Borders */
+  --color-line-faint: var(--border-faint);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+
+  /* Action (primary) */
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-press: var(--action-press);
+  --color-action-fg: var(--action-fg);
+  --color-action-weak: var(--action-weak);
+  --color-action-weak-bd: var(--action-weak-bd);
+
+  /* Semantic */
+  --color-brand: var(--brand);
+  --color-brand-weak: var(--brand-weak);
+  --color-brand-weak-bd: var(--brand-weak-bd);
+  --color-info: var(--info);
+  --color-info-weak: var(--info-weak);
+  --color-info-weak-bd: var(--info-weak-bd);
+  --color-warn: var(--warn);
+  --color-warn-weak: var(--warn-weak);
+  --color-warn-weak-bd: var(--warn-weak-bd);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-weak: var(--danger-weak);
+  --color-danger-weak-bd: var(--danger-weak-bd);
+
+  /* Template colorway slots — remapped by [data-colorway] in colorways.css.
+     Utilities: bg-t-bg, text-t-fg, border-t-line, bg-t-accent, ... */
+  --color-t-bg: var(--t-bg);
+  --color-t-surface: var(--t-surface);
+  --color-t-fg: var(--t-fg);
+  --color-t-fg-muted: var(--t-fg-muted);
+  --color-t-accent: var(--t-accent);
+  --color-t-accent-fg: var(--t-accent-fg);
+  --color-t-line: var(--t-line);
+
+  /* Type */
+  --font-display: var(--font-display);
+  --font-ui: var(--font-ui);
+  --font-mono: var(--font-mono);
+
+  /* Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* Motion */
+  --ease-keel: var(--ease);
+  --ease-keel-out: var(--ease-out);
+
+  /* Breakpoints — above xl the dashboard is pixel-identical to the source. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+}

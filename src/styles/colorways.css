@@ -1,0 +1,99 @@
+/**
+ * Tier 2 — template colorways.
+ *
+ * Seven slots remapped seven ways. This is the whole reason 130 templates do
+ * not become 910 files.
+ *
+ * IMPORTANT: [data-colorway] must sit on the exported stage node ITSELF, never
+ * on an ancestor. Export clones the stage subtree; an ancestor-scoped slot
+ * would resolve to nothing in the clone and render an unstyled graphic.
+ *
+ * Every value below resolves to an imported brand token. The only literals are
+ * the ink-surface and dark-mode tints, which are derived from --fg-1 and
+ * --action and documented inline.
+ */
+
+/* Cream — the default light surface. Warm, editorial, high trust. */
+[data-colorway='cream'] {
+  --t-bg: var(--surface-1);
+  --t-surface: var(--surface-2);
+  --t-fg: var(--fg-1);
+  --t-fg-muted: var(--fg-2);
+  --t-accent: var(--action);
+  --t-accent-fg: var(--action-fg);
+  --t-line: var(--border);
+  --t-bg-image: none;
+}
+
+/* Canvas — one step warmer/darker than cream; for cards that sit on cream. */
+[data-colorway='canvas'] {
+  --t-bg: var(--canvas);
+  --t-surface: var(--surface-1);
+  --t-fg: var(--fg-1);
+  --t-fg-muted: var(--fg-2);
+  --t-accent: var(--action);
+  --t-accent-fg: var(--action-fg);
+  --t-line: var(--border);
+  --t-bg-image: none;
+}
+
+/* Ink — stealth/dark. Surface is fg-1 lifted ~6% for panel separation;
+   accent is --action lightened to clear 4.5:1 on the dark ground. */
+[data-colorway='ink'] {
+  --t-bg: var(--fg-1);
+  --t-surface: #2E3639;
+  --t-fg: var(--surface-1);
+  --t-fg-muted: #A9AFAC;
+  --t-accent: #5FB3BF;
+  --t-accent-fg: var(--fg-1);
+  --t-line: rgba(252, 250, 245, 0.16);
+  --t-bg-image: none;
+}
+
+/* Teal flood — the signature. Full-bleed brand primary. */
+[data-colorway='teal'] {
+  --t-bg: var(--action);
+  --t-surface: var(--action-press);
+  --t-fg: var(--action-fg);
+  --t-fg-muted: rgba(252, 250, 245, 0.72);
+  --t-accent: var(--surface-1);
+  --t-accent-fg: var(--action);
+  --t-line: rgba(252, 250, 245, 0.20);
+  --t-bg-image: none;
+}
+
+/* Radial — campaign variant of teal with a soft directional light. */
+[data-colorway='radial'] {
+  --t-bg: var(--action);
+  --t-surface: var(--action-press);
+  --t-fg: var(--action-fg);
+  --t-fg-muted: rgba(252, 250, 245, 0.72);
+  --t-accent: var(--surface-1);
+  --t-accent-fg: var(--action);
+  --t-line: rgba(252, 250, 245, 0.20);
+  --t-bg-image: radial-gradient(120% 90% at 30% 10%, var(--action-hover) 0%, var(--action-press) 70%);
+}
+
+/* Monochrome — no hue. For press, embossing, single-colour print. */
+[data-colorway='mono'] {
+  --t-bg: var(--surface-1);
+  --t-surface: var(--surface-2);
+  --t-fg: var(--fg-1);
+  --t-fg-muted: var(--fg-2);
+  --t-accent: var(--fg-1);
+  --t-accent-fg: var(--surface-1);
+  --t-line: var(--border-strong);
+  --t-bg-image: none;
+}
+
+/* Inverted — dark ground, warm accent. The high-contrast counterpart to cream. */
+[data-colorway='inverted'] {
+  --t-bg: var(--fg-1);
+  --t-surface: #2E3639;
+  --t-fg: var(--action-fg);
+  --t-fg-muted: #A9AFAC;
+  --t-accent: var(--brand);
+  --t-accent-fg: var(--surface-1);
+  --t-line: rgba(252, 250, 245, 0.16);
+  --t-bg-image: none;
+}
