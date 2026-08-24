@@ -14,6 +14,10 @@ const ROUTES = [
   '/playbook/', '/playbook/logo/', '/playbook/colour/', '/playbook/typography/',
   '/playbook/motion/', '/playbook/application/', '/playbook/downloads/',
   '/studio/', '/foundation/',
+  // Editor routes. These were never covered before the library rail landed,
+  // which is exactly the kind of screen that overflows on a phone.
+  '/studio/square-big-stat/', '/studio/carousel-hook/', '/studio/x-header-banner/',
+  '/studio/export/',
 ];
 
 const VIEWPORTS = [
@@ -38,29 +42,33 @@ await withBrowser(async (browser) => {
         const vw = docEl.clientWidth;
         const offenders = [];
 
-        const walk = (el) => {
+        // `inScroller` is carried DOWN the tree rather than rediscovered by
+        // walking up from every element. The editor renders several full
+        // template stages at once, and the ancestor-walk version made enough
+        // getComputedStyle calls to hang the tab.
+        const walk = (el, inScroller) => {
           const r = el.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0 && r.right > vw + 1) {
-            // Ignore anything inside a deliberate horizontal scroller.
-            let p = el.parentElement;
-            let scroller = false;
-            while (p) {
-              const st = getComputedStyle(p);
-              if (st.overflowX === 'auto' || st.overflowX === 'scroll') { scroller = true; break; }
-              p = p.parentElement;
-            }
-            if (!scroller) {
-              offenders.push({
-                tag: el.tagName.toLowerCase(),
-                cls: String(el.className || '').slice(0, 60),
-                right: Math.round(r.right),
-                width: Math.round(r.width),
-              });
-            }
+
+          if (!inScroller && r.width > 0 && r.height > 0 && r.right > vw + 1) {
+            offenders.push({
+              tag: el.tagName.toLowerCase(),
+              cls: String(el.className || '').slice(0, 60),
+              right: Math.round(r.right),
+              width: Math.round(r.width),
+            });
           }
-          for (const c of el.children) walk(c);
+
+          if (!el.children.length) return;
+
+          // Only elements that can actually clip need their style resolved.
+          let scroller = inScroller;
+          if (!scroller && r.width > 0) {
+            const ox = getComputedStyle(el).overflowX;
+            scroller = ox === 'auto' || ox === 'scroll' || ox === 'hidden';
+          }
+          for (const c of el.children) walk(c, scroller);
         };
-        walk(document.body);
+        walk(document.body, false);
 
         return {
           vw,

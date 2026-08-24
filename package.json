@@ -20,8 +20,10 @@
     "verify:responsive": "node scripts/verify/responsive.mjs",
     "verify:export": "node scripts/verify/export-gate.mjs",
     "verify:shots": "node scripts/verify/shots.mjs",
-    "verify:all": "npm run typecheck && npm run lint:glyphs && npm run verify:assets && npm run verify:responsive && npm run verify:export",
-    "serve:out": "python3 -m http.server 8099 --directory out"
+    "verify:all": "npm run typecheck && npm run lint && npm run lint:glyphs && npm run verify:assets && npm run verify:responsive && npm run verify:export && npm run verify:editor && npm run verify:batch",
+    "serve:out": "python3 -m http.server 8099 --directory out",
+    "verify:editor": "node scripts/verify/editor.mjs",
+    "verify:batch": "node scripts/verify/batch.mjs"
   },
   "dependencies": {
     "file-saver": "^2.0.5",

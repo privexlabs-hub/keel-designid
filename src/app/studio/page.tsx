@@ -1,11 +1,10 @@
 /**
  * Template studio — catalog.
  *
- * A gallery only. Each card links to `/studio/<id>/`, which does NOT exist yet:
- * the per-template editor is a later phase, and the route will be generated
- * from `TEMPLATE_INDEX` with `generateStaticParams` when it lands. Until then
- * the links resolve to a 404, deliberately, rather than being disabled — the
- * URL shape is part of the contract the editor phase builds against.
+ * The catalogue at a glance. Each card links to `/studio/<id>/`, the editor,
+ * which is prerendered per template from `TEMPLATE_INDEX`. Once inside, the
+ * library rail takes over: templates are switched there rather than by coming
+ * back here, and each one keeps its own edits.
  *
  * This phase ships six pilot templates, chosen for rendering risk rather than
  * canvas variety: a gradient ground with a shadowed card, dense two-column
@@ -14,6 +13,7 @@
  * shallow banner at the small end of the type ramp.
  */
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { KeelLockup } from '@/brand/Logo';
 import { CATEGORIES, TEMPLATE_INDEX } from '@/templates/registry';
 import { TemplateCard } from '@/templates/render/TemplateCard';
@@ -68,7 +68,12 @@ export default function StudioPage() {
       })}
 
       <p className="mt-16 max-w-[62ch] text-[13px] leading-[1.6] text-fg-3">
-        Cards link to /studio/&lt;id&gt;/. That route is not built yet — the editor is a later phase.
+        Open any card to edit it. Inside the editor the library rail switches between templates
+        without losing your work, and{' '}
+        <Link href="/studio/export/" className="text-action">
+          Export a kit
+        </Link>{' '}
+        renders a whole deck, category or catalogue as a single archive.
       </p>
     </main>
   );

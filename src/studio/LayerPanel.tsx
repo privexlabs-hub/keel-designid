@@ -5,7 +5,7 @@ import { Icon } from '@/brand/icons';
 import { SLOT_IDS, type SlotId } from '@/brand/tokens';
 import { rampFor } from '@/templates/ramp';
 import type { ComposeCtx, FieldValues, LayerNode, TemplateDef } from '@/templates/types';
-import { useDoc, useUI, withHistoryTransaction } from './store';
+import { beginGesture, endGesture, useDoc, useUI, withHistoryTransaction } from './store';
 
 /**
  * Per-layer adjustments.
@@ -326,10 +326,13 @@ function Slider({
         max={max}
         step={step}
         value={value}
-        // A drag is one undo entry, not forty: pause history for the gesture
-        // and let it land on pointer release.
-        onPointerDown={() => useDoc.temporal.getState().pause()}
-        onPointerUp={() => useDoc.temporal.getState().resume()}
+        // A drag is one undo entry, not forty. Pausing alone would record
+        // nothing at all, so `endGesture` pushes the pre-drag state as a single
+        // entry — see the helpers in ./store.
+        onPointerDown={beginGesture}
+        onPointerUp={endGesture}
+        onPointerCancel={endGesture}
+        onBlur={endGesture}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full"
         style={{ accentColor: 'var(--action)' }}

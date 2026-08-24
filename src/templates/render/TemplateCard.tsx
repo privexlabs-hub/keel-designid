@@ -1,18 +1,18 @@
 'use client';
 
 /**
- * A gallery card: one template, loaded on demand and rendered live at preview
- * scale. The stage inside is still exactly `canvas.w x canvas.h` — only the
- * wrapper is scaled — so what is on screen is what would export.
+ * A gallery card: one template, rendered live at preview scale, linking into
+ * the editor.
+ *
+ * The preview itself lives in `TemplatePreview`, which the library rail and
+ * the slide filmstrip also use — one render path, so a card, a rail row and an
+ * exported file are always the same composition.
  */
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { ColorwayId } from '@/brand/tokens';
 import { COLORWAYS } from '@/brand/tokens';
-import { loadTemplate, type TemplateMeta } from '../registry';
-import type { TemplateDef } from '../types';
-import { ScaledStage } from './ScaledStage';
-import { TemplateStage } from './TemplateStage';
+import type { TemplateMeta } from '../registry';
+import { TemplatePreview } from './TemplatePreview';
 
 export interface TemplateCardProps {
   meta: TemplateMeta;
@@ -23,26 +23,7 @@ export interface TemplateCardProps {
 }
 
 export function TemplateCard({ meta, slide, colorway }: TemplateCardProps) {
-  const [def, setDef] = useState<TemplateDef | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let live = true;
-    loadTemplate(meta.id).then(
-      (t) => {
-        if (live) setDef(t);
-      },
-      () => {
-        if (live) setFailed(true);
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [meta.id]);
-
   const way = colorway ?? meta.defaultColorway;
-  const ratio = meta.canvas.h / meta.canvas.w;
 
   return (
     <Link
@@ -50,17 +31,7 @@ export function TemplateCard({ meta, slide, colorway }: TemplateCardProps) {
       className="group block rounded-xl border border-line bg-surface-1 p-3 no-underline"
     >
       <div className="overflow-hidden rounded-lg border border-line-faint bg-canvas">
-        {def ? (
-          <ScaledStage w={meta.canvas.w} h={meta.canvas.h}>
-            <TemplateStage template={def} colorway={way} slide={slide} />
-          </ScaledStage>
-        ) : (
-          <div
-            className="bg-surface-2"
-            style={{ width: '100%', paddingTop: `${ratio * 100}%` }}
-            aria-label={failed ? 'Template failed to load' : 'Loading template'}
-          />
-        )}
+        <TemplatePreview meta={meta} slide={slide} colorway={way} />
       </div>
 
       <div className="mt-3 flex items-baseline justify-between gap-3">

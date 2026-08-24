@@ -1,18 +1,37 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/brand/icons';
 import { KeelLockup } from '@/brand/Logo';
 import { COLORWAYS } from '@/brand/tokens';
 import { ScaledStage } from '@/templates/render/ScaledStage';
 import { TemplateStage } from '@/templates/render/TemplateStage';
-import { loadTemplate } from '@/templates/registry';
-import type { FieldDef, FieldValues, TemplateDef } from '@/templates/types';
+import { loadTemplateCached } from '@/templates/render/loadCache';
+import { templateMeta } from '@/templates/registry';
+import type { CanvasSpec, FieldDef, FieldValues, LayerNode, TemplateDef } from '@/templates/types';
+import { rampFor } from '@/templates/ramp';
 import { FieldControl } from './FieldControl';
 import { LayerPanel } from './LayerPanel';
 import { ExportPanel } from './ExportPanel';
-import { useDoc, useUI } from './store';
+import { ColorwayStrip } from './ColorwayStrip';
+import { Filmstrip } from './Filmstrip';
+import { LibraryRail } from './LibraryRail';
+import { RailSheet } from './RailSheet';
+import { StageOverlay } from './StageOverlay';
+import { useLayerInteraction } from './useLayerInteraction';
+import { useStageIssues } from './useStageIssues';
+import { switchTemplateWithHistory, useDoc, useUI } from './store';
+
+/** Stand-in while the template loads; the issue pass is disabled until then. */
+const EMPTY_CANVAS: CanvasSpec = {
+  id: 'square1080',
+  label: '',
+  w: 1,
+  h: 1,
+  ramp: 1,
+  pad: 0,
+};
 
 /**
  * The editor. One stage, one inspector.
@@ -29,19 +48,38 @@ export function Editor({ templateId }: { templateId: string }) {
   const doc = useDoc();
   const ui = useUI();
 
+  // The route prop is the STARTING template only. After mount the rail drives
+  // `activeId` directly: pushing a route per click would remount the editor and
+  // throw away the rail's scroll position mid-browse.
+  const [activeId, setActiveId] = useState(templateId);
+  const [railOpen, setRailOpen] = useState(false);
+
+  // If the route prop changes under us (a real navigation rather than a rail
+  // click), re-seed during render. Adjusting state in render is the supported
+  // way to do this; an effect would render once with the stale template first.
+  const [seededFrom, setSeededFrom] = useState(templateId);
+  if (templateId !== seededFrom) {
+    setSeededFrom(templateId);
+    setActiveId(templateId);
+  }
+
   useEffect(() => {
     let live = true;
-    loadTemplate(templateId)
+    loadTemplateCached(activeId)
       .then((t) => {
         if (!live) return;
         setTemplate(t);
-        useDoc.getState().load({
+        setError(null);
+        // Parks the outgoing design and unparks this one if it was edited
+        // before, so browsing away and back is lossless. A no-op when the
+        // persisted document is already this template — which is what makes a
+        // reload restore your work rather than reset it.
+        switchTemplateWithHistory({
           templateId: t.id,
           schemaVersion: t.schemaVersion,
           colorway: t.colorways[0],
           values: structuredClone(t.defaults),
         });
-        useDoc.temporal.getState().clear();
         useUI.getState().setSlide(0);
         useUI.getState().select(null);
       })
@@ -49,13 +87,66 @@ export function Editor({ templateId }: { templateId: string }) {
     return () => {
       live = false;
     };
-  }, [templateId]);
+  }, [activeId]);
+
+  // Keep the address bar honest without remounting. Every template route is
+  // prerendered, so the URL stays a valid deep link and a refresh works.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !activeId) return;
+    const next = `/studio/${activeId}/`;
+    if (window.location.pathname !== next) {
+      window.history.replaceState(null, '', next);
+    }
+  }, [activeId]);
 
   const fields: FieldValues = useMemo(() => {
     if (!template) return {};
     const perSlide = template.slides ? (doc.slideValues[ui.slide] ?? {}) : {};
     return { ...doc.values, ...perSlide };
   }, [template, doc.values, doc.slideValues, ui.slide]);
+
+  // The filmstrip needs each slide's merged values, not just the active one.
+  const fieldsForSlide = useCallback(
+    (index: number): FieldValues => ({ ...doc.values, ...(doc.slideValues[index] ?? {}) }),
+    [doc.values, doc.slideValues],
+  );
+
+  const meta = template ? templateMeta(template.id) : undefined;
+
+  // Locked layers refuse selection-drag; the layer list still lists them.
+  const lockedIds = useMemo(() => {
+    if (!template) return new Set<string>();
+    const ctx = {
+      canvas: template.canvas,
+      colorway: doc.colorway,
+      slide: template.slides ? ui.slide + 1 : undefined,
+      t: rampFor(template.canvas),
+    };
+    const ids = new Set<string>();
+    const walk = (nodes: LayerNode[]) => {
+      for (const n of nodes) {
+        if (n.locked) ids.add(n.id);
+        if (n.children) walk(n.children);
+      }
+    };
+    walk(template.compose(fields, ctx));
+    return ids;
+  }, [template, fields, doc.colorway, ui.slide]);
+
+  const layerHandlers = useLayerInteraction(stageRef, lockedIds);
+
+  // Any change to the composition invalidates the measured overlay boxes.
+  const revision = useMemo(
+    () => JSON.stringify([fields, doc.overrides, doc.colorway, ui.slide, doc.extraLayers]).length,
+    [fields, doc.overrides, doc.colorway, ui.slide, doc.extraLayers],
+  );
+
+  const issues = useStageIssues(
+    stageRef,
+    template?.canvas ?? EMPTY_CANVAS,
+    [revision],
+    Boolean(template) && !ui.exporting,
+  );
 
   if (error) {
     return (
@@ -88,32 +179,82 @@ export function Editor({ templateId }: { templateId: string }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas lg:h-dvh lg:overflow-hidden">
-      <EditorHeader template={template} />
+      <EditorHeader template={template} onOpenLibrary={() => setRailOpen(true)} />
+
+      <RailSheet
+        open={railOpen}
+        onClose={() => setRailOpen(false)}
+        activeId={activeId}
+        onPick={setActiveId}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* ---------------------------------------------------------- rail */}
+        <LibraryRail
+          activeId={activeId}
+          onPick={setActiveId}
+          className="hidden w-[288px] shrink-0 border-r border-line bg-surface-1 xl:flex"
+        />
+
         {/* ---------------------------------------------------------- stage */}
         <section
           className="flex min-w-0 flex-1 flex-col items-center justify-center gap-5 p-5 sm:p-8 lg:overflow-auto"
           aria-label="Preview"
         >
-          <ScaledStage w={canvas.w} h={canvas.h} maxScale={1} className="w-full max-w-[640px]">
-            <TemplateStage
-              ref={stageRef}
-              template={template}
-              fields={fields}
-              colorway={doc.colorway}
-              slide={ui.slide + 1}
-              overrides={doc.overrides}
-              extraText={doc.extraLayers}
-            />
-          </ScaledStage>
+          {/* The pointer handlers live on this wrapper, never on the stage
+              node — that node is what the exporter rasterises and it stays a
+              plain, untransformed box. */}
+          <div className="w-full max-w-[640px] touch-none" {...layerHandlers}>
+            <ScaledStage w={canvas.w} h={canvas.h} maxScale={1} className="w-full">
+              <TemplateStage
+                ref={stageRef}
+                template={template}
+                fields={fields}
+                colorway={doc.colorway}
+                slide={ui.slide + 1}
+                overrides={doc.overrides}
+                extraText={doc.extraLayers}
+              />
+              {/* Sibling of the stage, so export can never see it. */}
+              <StageOverlay
+                stageRef={stageRef}
+                canvas={canvas}
+                selectedLayerId={ui.selectedLayerId}
+                issues={issues}
+                showGuides={ui.guides}
+                revision={revision}
+              />
+            </ScaledStage>
+          </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <span className="font-mono text-fg-3" style={{ fontSize: 11 }}>
-              {canvas.w} x {canvas.h}
-            </span>
+          <div className="flex w-full max-w-[640px] flex-col items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="font-mono text-fg-3" style={{ fontSize: 11 }}>
+                {canvas.w} x {canvas.h}
+              </span>
+              <ColorwayStrip colorways={template.colorways} />
+            </div>
+
             {slideCount > 1 ? (
-              <SlidePicker count={slideCount} value={ui.slide} onChange={ui.setSlide} />
+              <>
+                {/* Numbers below sm, where a filmstrip would be thumbnails too
+                    small to recognise; live previews from sm up. */}
+                <div className="sm:hidden">
+                  <SlidePicker count={slideCount} value={ui.slide} onChange={ui.setSlide} />
+                </div>
+                {meta ? (
+                  <div className="hidden w-full sm:block">
+                    <Filmstrip
+                      template={template}
+                      meta={meta}
+                      count={slideCount}
+                      value={ui.slide}
+                      onChange={ui.setSlide}
+                      fieldsFor={fieldsForSlide}
+                    />
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </div>
         </section>
@@ -142,7 +283,13 @@ export function Editor({ templateId }: { templateId: string }) {
   );
 }
 
-function EditorHeader({ template }: { template: TemplateDef }) {
+function EditorHeader({
+  template,
+  onOpenLibrary,
+}: {
+  template: TemplateDef;
+  onOpenLibrary: () => void;
+}) {
   const { undo, redo, pastStates, futureStates } = useDoc.temporal.getState();
   const [, force] = useState(0);
 
@@ -160,6 +307,17 @@ function EditorHeader({ template }: { template: TemplateDef }) {
         Studio
       </Link>
 
+      {/* Below xl the rail has no column of its own, so it opens as a sheet. */}
+      <button
+        type="button"
+        onClick={onOpenLibrary}
+        className="flex items-center gap-2 rounded-md border px-2.5 text-fg-2 xl:hidden"
+        style={{ borderColor: 'var(--border)', fontSize: 12.5, minHeight: 34 }}
+      >
+        <Icon name="layers" size={14} />
+        Templates
+      </button>
+
       <span className="hidden sm:block" style={{ width: 1, height: 18, background: 'var(--border)' }} />
 
       <span className="min-w-0 flex-1">
@@ -173,7 +331,17 @@ function EditorHeader({ template }: { template: TemplateDef }) {
         <HeaderBtn label="Redo" icon="arrowUp" disabled={futureStates.length === 0} onClick={() => redo()} rotate={90} />
       </span>
 
-      <span className="hidden lg:block">
+      <Link
+        href="/studio/export/"
+        className="flex items-center gap-2 rounded-md border px-2.5 text-fg-2 no-underline"
+        style={{ borderColor: 'var(--border)', fontSize: 12.5, minHeight: 34 }}
+        title="Export several files at once"
+      >
+        <Icon name="layers" size={14} />
+        <span className="hidden sm:inline">Export kit</span>
+      </Link>
+
+      <span className="hidden xl:block">
         <KeelLockup size={20} subtitle={null} />
       </span>
     </header>

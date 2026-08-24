@@ -29,9 +29,22 @@ export async function withBrowser(fn) {
   }
 }
 
-/** Wait until webfonts have actually settled, so measurements are stable. */
+/**
+ * Wait until webfonts have actually settled, so measurements are stable.
+ *
+ * `networkidle0` is the ideal signal but it is fragile: the studio loads
+ * template chunks lazily as previews scroll into view, and on a busy machine
+ * the idle window may never open. Falling back to `domcontentloaded` plus an
+ * explicit font wait keeps the check honest — fonts settled is what the
+ * measurements actually depend on — instead of failing the run on timing.
+ */
 export async function gotoSettled(page, url) {
-  await page.goto(url, { waitUntil: 'networkidle0', timeout: 60_000 });
+  try {
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 45_000 });
+  } catch {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+    await new Promise((r) => setTimeout(r, 1500));
+  }
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
